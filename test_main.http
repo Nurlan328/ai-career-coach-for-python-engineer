@@ -1,0 +1,86 @@
+# AI Career Coach — manual API checks (JetBrains HTTP client)
+# Run the app first:  uvicorn app.main:app --reload
+
+@base = http://127.0.0.1:8000
+
+### Health
+GET {{base}}/
+Accept: application/json
+
+### Register
+POST {{base}}/api/auth/register
+Content-Type: application/json
+
+{ "email": "dev@example.com", "password": "secret123", "full_name": "Dev" }
+
+### Login (grabs the access token into a variable)
+# @name login
+POST {{base}}/api/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=dev@example.com&password=secret123
+
+### Me
+GET {{base}}/api/auth/me
+Authorization: Bearer {{login.response.body.access_token}}
+
+### Question categories
+GET {{base}}/api/questions/categories
+Authorization: Bearer {{login.response.body.access_token}}
+
+### Generate questions
+POST {{base}}/api/questions/generate
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{ "category": "Async Python", "level": "middle", "count": 5 }
+
+### Start a mock interview
+# @name interview
+POST {{base}}/api/interviews/start
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{ "category": "FastAPI", "level": "middle", "num_questions": 3 }
+
+### Answer the first question
+POST {{base}}/api/interviews/{{interview.response.body.id}}/answer
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{ "question_id": {{interview.response.body.questions[0].id}}, "answer": "Depends injects and resolves dependencies per request, enabling reuse and testing via overrides." }
+
+### Interview result
+GET {{base}}/api/interviews/{{interview.response.body.id}}/result
+Authorization: Bearer {{login.response.body.access_token}}
+
+### Interview history
+GET {{base}}/api/interviews/history
+Authorization: Bearer {{login.response.body.access_token}}
+
+### Ask the AI tutor any Python/backend question (needs ANTHROPIC_API_KEY)
+POST {{base}}/api/coach/ask
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{ "question": "Чем asyncio.gather отличается от asyncio.create_task?", "category": "Async Python" }
+
+### Ask a follow-up with conversation history (multi-turn)
+POST {{base}}/api/coach/ask
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{
+  "question": "А если внутри него вызвать blocking I/O?",
+  "history": [
+    { "role": "user", "content": "Что такое event loop?" },
+    { "role": "assistant", "content": "Это цикл обработки событий asyncio." }
+  ]
+}
+
+### Streamed answer (token-by-token, text/plain)
+POST {{base}}/api/coach/ask/stream
+Authorization: Bearer {{login.response.body.access_token}}
+Content-Type: application/json
+
+{ "question": "Объясни event loop простыми словами." }
