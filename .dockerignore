@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local data / secrets
+.env
+*.db
+*.sqlite3
+
+# Frontend (built/deployed separately)
+frontend/
+
+# Tooling / VCS / IDE
+.git/
+.github/
+.idea/
+.vscode/
+deploy/
+
+# Test artifacts
+.pytest_cache/
+.ruff_cache/
+_*.db

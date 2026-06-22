@@ -1,0 +1,28 @@
+# One-off schema migration. Run before rolling out a new image:
+#   kubectl -n career-coach delete job migrate --ignore-not-found
+#   kubectl apply -f deploy/k8s/60-migrate-job.yaml
+#   kubectl -n career-coach wait --for=condition=complete job/migrate --timeout=180s
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate
+  namespace: career-coach
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app: career-coach
+        component: migrate
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: ACCOUNT.dkr.ecr.REGION.amazonaws.com/ai-career-coach:latest
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef:
+                name: career-coach-config
+            - secretRef:
+                name: career-coach-secrets

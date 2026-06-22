@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: career-coach
+  labels:
+    app: career-coach
+    component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: career-coach
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: career-coach
+        component: worker
+    spec:
+      containers:
+        - name: worker
+          image: ACCOUNT.dkr.ecr.REGION.amazonaws.com/ai-career-coach:latest
+          command: ["celery", "-A", "app.core.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+          envFrom:
+            - configMapRef:
+                name: career-coach-config
+            - secretRef:
+                name: career-coach-secrets
+          livenessProbe:
+            exec:
+              command: ["celery", "-A", "app.core.celery_app", "inspect", "ping", "-d", "celery@$(hostname)"]
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi

@@ -1,0 +1,25 @@
+# Requires the AWS Load Balancer Controller installed in the cluster.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: career-coach
+  namespace: career-coach
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    # For TLS, attach an ACM cert and add HTTPS:443:
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:REGION:ACCOUNT:certificate/...
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 80

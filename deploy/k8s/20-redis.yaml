@@ -1,0 +1,44 @@
+# In-cluster Redis for demo/dev clusters. In production prefer AWS ElastiCache
+# and delete this file (set REDIS_URL in the ConfigMap to the ElastiCache endpoint).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: career-coach
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: career-coach
+      component: redis
+  template:
+    metadata:
+      labels:
+        app: career-coach
+        component: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: career-coach
+spec:
+  selector:
+    app: career-coach
+    component: redis
+  ports:
+    - port: 6379
+      targetPort: 6379

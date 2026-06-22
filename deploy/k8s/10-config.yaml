@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: career-coach-config
+  namespace: career-coach
+data:
+  API_PREFIX: "/api"
+  AUTO_CREATE_TABLES: "false"   # schema is managed by the migrate Job (Alembic)
+  LLM_MODEL: "claude-sonnet-4-6"
+  CACHE_ENABLED: "true"
+  # In-cluster Redis (20-redis.yaml). For production, point at ElastiCache:
+  #   REDIS_URL: "redis://<elasticache-endpoint>:6379/0"
+  REDIS_URL: "redis://redis:6379/0"
+---
+# EXAMPLE secret — DO NOT commit real values. Create it out-of-band instead:
+#   kubectl -n career-coach create secret generic career-coach-secrets \
+#     --from-literal=SECRET_KEY=... \
+#     --from-literal=ANTHROPIC_API_KEY=sk-ant-... \
+#     --from-literal=DATABASE_URL='postgresql+asyncpg://user:pass@<rds>:5432/career_coach'
+# or sync from AWS Secrets Manager / SSM via the External Secrets Operator.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: career-coach-secrets
+  namespace: career-coach
+type: Opaque
+stringData:
+  SECRET_KEY: "CHANGE_ME"
+  ANTHROPIC_API_KEY: ""
+  DATABASE_URL: "postgresql+asyncpg://postgres:postgres@CHANGE_ME-rds-endpoint:5432/career_coach"
