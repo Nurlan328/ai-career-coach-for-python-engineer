@@ -1,0 +1,34 @@
+# --- Web framework ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9        # file uploads + OAuth2 form
+
+# --- Validation / settings ---
+pydantic>=2.7
+pydantic-settings>=2.3
+email-validator>=2.1           # required by pydantic EmailStr
+
+# --- Database (async) ---
+SQLAlchemy[asyncio]>=2.0.30
+aiosqlite>=0.20                # default dev driver (SQLite)
+alembic>=1.13                  # schema migrations
+# asyncpg>=0.29                # uncomment for PostgreSQL
+
+# --- Auth ---
+PyJWT>=2.8
+bcrypt>=4.1
+
+# --- LLM (Claude) ---
+anthropic>=0.40
+
+# --- Resume parsing ---
+pypdf>=4.2
+python-docx>=1.1
+
+# --- RAG (knowledge base) ---
+qdrant-client>=1.11           # vector store (in-memory mode)
+fastembed>=0.4                # local ONNX embeddings (no API key needed)
+
+# --- Background jobs / cache ---
+celery>=5.3
+redis>=5.0
