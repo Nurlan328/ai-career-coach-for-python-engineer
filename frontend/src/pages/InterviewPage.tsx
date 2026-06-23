@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { ApiError } from "../api/client";
 import { startInterview, submitAnswer } from "../api/interviews";
 import { getCategories } from "../api/questions";
+import { useSpeech } from "../hooks/useSpeech";
 import type { AnswerFeedback, InterviewOut } from "../types";
 
 export default function InterviewPage() {
@@ -20,6 +21,8 @@ export default function InterviewPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const speech = useSpeech("ru-RU");
 
   useEffect(() => {
     getCategories()
@@ -142,20 +145,50 @@ export default function InterviewPage() {
       ) : (
         current && (
           <form className="card" onSubmit={onAnswer}>
-            <div className="muted small">
-              Вопрос {current.order_index + 1} · {current.difficulty}
+            <div className="row between">
+              <div className="muted small">
+                Вопрос {current.order_index + 1} · {current.difficulty}
+              </div>
+              {speech.supported.tts && (
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => speech.speak(current.question_text)}
+                >
+                  🔊 Прочитать вопрос
+                </button>
+              )}
             </div>
             <p className="q-text big">{current.question_text}</p>
             <textarea
               rows={6}
               value={answer}
-              placeholder="Ваш ответ…"
+              placeholder="Ваш ответ… (можно надиктовать голосом)"
               onChange={(e) => setAnswer(e.target.value)}
               required
             />
-            <button className="btn primary" disabled={busy || !answer.trim()}>
-              {busy ? "Оцениваем…" : "Отправить ответ"}
-            </button>
+            <div className="row between">
+              <button className="btn primary" disabled={busy || !answer.trim()}>
+                {busy ? "Оцениваем…" : "Отправить ответ"}
+              </button>
+              {speech.supported.stt ? (
+                <button
+                  type="button"
+                  className={"btn ghost" + (speech.listening ? " mic-on" : "")}
+                  onClick={() =>
+                    speech.listening
+                      ? speech.stopListening()
+                      : speech.startListening((t) =>
+                          setAnswer((a) => (a ? a + " " : "") + t),
+                        )
+                  }
+                >
+                  {speech.listening ? "⏹ Остановить запись" : "🎤 Диктовать ответ"}
+                </button>
+              ) : (
+                <span className="muted small">🎤 Диктовка — в Chrome/Edge</span>
+              )}
+            </div>
           </form>
         )
       )}
