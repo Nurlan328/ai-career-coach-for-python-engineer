@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { askRag, askStream } from "../api/coach";
 import { apiBase } from "../api/client";
+import { useSpeech } from "../hooks/useSpeech";
 import type { ChatTurn, RagSource } from "../types";
 
 type Msg = ChatTurn & { sources?: RagSource[] };
@@ -12,6 +13,8 @@ export default function TutorPage() {
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [llmEnabled, setLlmEnabled] = useState<boolean | null>(null);
+  const [readAloud, setReadAloud] = useState(false);
+  const speech = useSpeech("ru-RU");
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,6 +49,7 @@ export default function TutorPage() {
           ...p,
           { role: "assistant", content: resp.answer, sources: resp.sources },
         ]);
+        if (readAloud) speech.speak(resp.answer);
       } catch {
         setError("Ошибка запроса к базе знаний. Запущен ли бэкенд?");
       } finally {
@@ -60,8 +64,10 @@ export default function TutorPage() {
       { role: "user", content: question },
       { role: "assistant", content: "" },
     ]);
+    let full = "";
     try {
       await askStream(question, prior, (chunk) => {
+        full += chunk;
         setMessages((p) => {
           const copy = p.slice();
           const last = copy[copy.length - 1];
@@ -69,6 +75,7 @@ export default function TutorPage() {
           return copy;
         });
       });
+      if (readAloud) speech.speak(full);
     } catch {
       setError("Ошибка стрима. Запущен ли бэкенд на " + apiBase + "?");
       setMessages((p) => {
@@ -85,14 +92,26 @@ export default function TutorPage() {
   return (
     <div className="page chat-page">
       <h1>AI-тьютор</h1>
-      <label className="rag-toggle">
-        <input
-          type="checkbox"
-          checked={ragMode}
-          onChange={(e) => setRagMode(e.target.checked)}
-        />
-        Отвечать по базе знаний (с источниками)
-      </label>
+      <div className="row wrap">
+        <label className="rag-toggle">
+          <input
+            type="checkbox"
+            checked={ragMode}
+            onChange={(e) => setRagMode(e.target.checked)}
+          />
+          Отвечать по базе знаний (с источниками)
+        </label>
+        {speech.supported.tts && (
+          <label className="rag-toggle">
+            <input
+              type="checkbox"
+              checked={readAloud}
+              onChange={(e) => setReadAloud(e.target.checked)}
+            />
+            🔊 Озвучивать ответы
+          </label>
+        )}
+      </div>
 
       {llmEnabled === false && (
         <div className="alert warn">
@@ -137,10 +156,32 @@ export default function TutorPage() {
       {error && <div className="alert error">{error}</div>}
 
       <form className="chat-input" onSubmit={onSend}>
+        {speech.supported.stt && (
+          <button
+            type="button"
+            title="Голосовой ввод"
+            className={"btn ghost mic-btn" + (speech.listening ? " mic-on" : "")}
+            onClick={() =>
+              speech.listening
+                ? speech.stopListening()
+                : speech.startListening((t) =>
+                    setInput((v) => (v ? v + " " : "") + t),
+                  )
+            }
+          >
+            🎤
+          </button>
+        )}
         <input
           type="text"
           value={input}
-          placeholder={ragMode ? "Вопрос по базе знаний…" : "Спросите что-нибудь…"}
+          placeholder={
+            speech.listening
+              ? "Говорите…"
+              : ragMode
+                ? "Вопрос по базе знаний…"
+                : "Спросите голосом или текстом…"
+          }
           onChange={(e) => setInput(e.target.value)}
           disabled={streaming}
         />
