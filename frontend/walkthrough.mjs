@@ -125,6 +125,12 @@ try {
   await page.waitForTimeout(400);
   await shot(page, "09-tutor-rag");
 
+  // 8. Billing / plans (mock checkout in offline mode)
+  await page.click('.nav-link:has-text("Тариф")');
+  await page.waitForSelector(".plan-card", { timeout: 20000 });
+  await page.waitForTimeout(400);
+  await shot(page, "10-billing");
+
   console.log("OK", JSON.stringify(shots));
 } catch (e) {
   console.error("ERROR:", e.message);

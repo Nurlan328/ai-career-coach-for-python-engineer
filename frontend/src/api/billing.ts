@@ -1,0 +1,17 @@
+import { api } from "./client";
+import type { CheckoutResponse, PlanOut, UsageOut } from "../types";
+
+export function getPlans(): Promise<PlanOut[]> {
+  return api<PlanOut[]>("/api/billing/plans");
+}
+
+export function getUsage(): Promise<UsageOut> {
+  return api<UsageOut>("/api/billing/me");
+}
+
+export function checkout(plan: string): Promise<CheckoutResponse> {
+  return api<CheckoutResponse>("/api/billing/checkout", {
+    method: "POST",
+    body: JSON.stringify({ plan }),
+  });
+}

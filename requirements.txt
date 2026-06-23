@@ -32,3 +32,6 @@ fastembed>=0.4                # local ONNX embeddings (no API key needed)
 # --- Background jobs / cache ---
 celery>=5.3
 redis>=5.0
+
+# --- Billing ---
+stripe>=9                      # optional: mock mode without a key

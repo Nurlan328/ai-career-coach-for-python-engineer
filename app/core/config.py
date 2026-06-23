@@ -50,6 +50,16 @@ class Settings(BaseSettings):
     rag_embed_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     rag_top_k: int = 4
 
+    # --- Billing (Stripe) ---
+    # Leave the secret empty to run billing in mock mode (instant upgrade, no charge).
+    stripe_secret_key: str | None = None
+    stripe_webhook_secret: str | None = None
+    stripe_price_pro: str | None = None
+    billing_success_url: str = "http://localhost:5173/billing?status=success"
+    billing_cancel_url: str = "http://localhost:5173/billing?status=cancel"
+    free_interviews_per_month: int = 3
+    pro_price_usd: float = 19.0
+
     # --- Uploads ---
     max_upload_mb: int = 5
 

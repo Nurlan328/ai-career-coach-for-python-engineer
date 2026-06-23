@@ -84,6 +84,25 @@ export interface ChatTurn {
   content: string;
 }
 
+export interface PlanOut {
+  id: string;
+  label: string;
+  price_usd: number;
+  interviews_per_month: number | null;
+}
+
+export interface UsageOut {
+  plan: string;
+  interviews_used: number;
+  interviews_limit: number | null;
+}
+
+export interface CheckoutResponse {
+  mock: boolean;
+  plan?: string | null;
+  checkout_url?: string | null;
+}
+
 export interface RagSource {
   title: string;
   source: string;

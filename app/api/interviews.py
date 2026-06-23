@@ -12,7 +12,7 @@ from app.schemas.interview import (
     InterviewStartRequest,
     QuestionOut,
 )
-from app.services import interview_service
+from app.services import billing, interview_service
 
 router = APIRouter(prefix="/interviews", tags=["interviews"])
 
@@ -32,6 +32,7 @@ def _question_out(question) -> QuestionOut:
 async def start(
     payload: InterviewStartRequest, current_user: CurrentUser, db: DbSession
 ) -> InterviewOut:
+    await billing.check_interview_quota(db, current_user)
     interview = await interview_service.start_interview(
         db,
         user_id=current_user.id,

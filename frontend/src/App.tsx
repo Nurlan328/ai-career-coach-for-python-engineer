@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import Layout from "./components/Layout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import BillingPage from "./pages/BillingPage";
 import DashboardPage from "./pages/DashboardPage";
 import InterviewPage from "./pages/InterviewPage";
 import LoginPage from "./pages/LoginPage";
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="questions" element={<QuestionsPage />} />
         <Route path="interview" element={<InterviewPage />} />
         <Route path="tutor" element={<TutorPage />} />
+        <Route path="billing" element={<BillingPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -23,7 +23,7 @@ runs a text **mock interview** and scores the answers — powered by **Claude**.
 | Jobs / cache | Celery + Redis (graceful in-memory fallback) |
 | Parsing      | pypdf · python-docx                      |
 | Tests / CI   | pytest + ruff · GitHub Actions           |
-| Deploy       | Docker · Kubernetes (EKS) · ECR · ALB    |
+| Deploy       | AWS (EKS · ECR · ALB · RDS · ElastiCache) · Docker |
 
 ## MVP scope (implemented)
 
@@ -39,8 +39,12 @@ runs a text **mock interview** and scores the answers — powered by **Claude**.
 9. **AI tutor** — free-form Q&A with multi-turn context and token streaming
 10. **RAG knowledge base** — tutor answers grounded in a curated corpus with cited
     sources (Qdrant + fastembed; works offline, returns snippets without a key)
+11. **Voice interview** — read questions aloud (TTS) and dictate answers (STT) via
+    the browser Web Speech API (no backend/keys; Chrome/Edge)
+12. **Billing & plans** — Stripe checkout + monthly interview limits per plan;
+    runs in mock mode (instant upgrade) without a Stripe key
 
-_Later (left as seams): voice interview, payments, Celery background jobs._
+_The full ТЗ scope is implemented._
 
 > The first `/coach/rag` call downloads the embedding model
 > (`paraphrase-multilingual-MiniLM-L12-v2`, ~hundreds of MB) and builds the index
@@ -95,6 +99,10 @@ Base prefix: `/api`
 | POST   | `/coach/ask`                      | Ask Claude any Python/backend question (supports `history`) |
 | POST   | `/coach/ask/stream`               | Same, streamed token-by-token (`text/plain`) |
 | POST   | `/coach/rag`                      | Answer grounded in the knowledge base, with cited sources |
+| GET    | `/billing/plans`                  | Subscription plans + limits          |
+| GET    | `/billing/me`                     | Current plan + monthly usage         |
+| POST   | `/billing/checkout`               | Stripe checkout (or mock upgrade)    |
+| POST   | `/billing/webhook`                | Stripe webhook (activate subscription) |
 
 ## Frontend (React)
 

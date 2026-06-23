@@ -8,6 +8,7 @@ const LINKS = [
   { to: "/questions", label: "Вопросы" },
   { to: "/interview", label: "Интервью" },
   { to: "/tutor", label: "AI-тьютор" },
+  { to: "/billing", label: "Тариф" },
 ];
 
 export default function Layout() {
