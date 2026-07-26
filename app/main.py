@@ -24,7 +24,7 @@ async def lifespan(_app: FastAPI):
     logger.info(
         "Started %s | LLM: %s",
         settings.app_name,
-        f"enabled ({settings.llm_model})" if ai.enabled else "disabled (offline fallback)",
+        f"enabled ({ai.provider}: {ai.model_name})" if ai.enabled else "disabled (offline fallback)",
     )
     yield
 

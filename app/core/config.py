@@ -32,10 +32,17 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24  # 24h
 
     # --- LLM (Claude) ---
+    # Provider: "auto" = Claude if ANTHROPIC_API_KEY is set, otherwise offline
+    # fallback. Set "ollama" to use a free local model via Ollama instead.
+    llm_provider: str = "auto"  # auto | anthropic | ollama
     anthropic_api_key: str | None = None
     # Override with claude-opus-4-8 for max quality, or claude-haiku-4-5 for speed/cost.
     llm_model: str = "claude-sonnet-4-6"
     llm_max_tokens: int = 2000
+
+    # --- LLM (Ollama, local) — used when LLM_PROVIDER=ollama ---
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen3:8b"
 
     # --- Background jobs (Celery) + cache (Redis) ---
     redis_url: str = "redis://localhost:6379/0"
@@ -52,11 +59,19 @@ class Settings(BaseSettings):
 
     # --- Billing (Stripe) ---
     # Leave the secret empty to run billing in mock mode (instant upgrade, no charge).
+    # Real mode needs all three: STRIPE_SECRET_KEY + STRIPE_PRICE_PRO (recurring
+    # price id) + STRIPE_WEBHOOK_SECRET (whsec_..., from `stripe listen` or the
+    # dashboard endpoint).
     stripe_secret_key: str | None = None
     stripe_webhook_secret: str | None = None
     stripe_price_pro: str | None = None
+    # Pin the Stripe API version so a server-side upgrade can't change payload
+    # shapes under us. None = whatever the installed SDK defaults to.
+    stripe_api_version: str | None = None
     billing_success_url: str = "http://localhost:5173/billing?status=success"
     billing_cancel_url: str = "http://localhost:5173/billing?status=cancel"
+    # Where the Stripe-hosted customer portal sends the user back to.
+    billing_portal_return_url: str = "http://localhost:5173/billing"
     free_interviews_per_month: int = 3
     pro_price_usd: float = 19.0
 
