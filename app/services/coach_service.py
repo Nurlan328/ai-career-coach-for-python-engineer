@@ -8,8 +8,9 @@ response instead of a fabricated answer.
 import logging
 from collections.abc import AsyncIterator
 
+from app.core.config import settings
 from app.schemas.coach import ChatTurn
-from app.services.ai_service import ai, friendly_llm_error
+from app.services.ai_service import ai
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,8 @@ _SYSTEM = (
 )
 
 _UNAVAILABLE = (
-    "AI-ответы недоступны: не настроен LLM-провайдер. "
-    "Добавьте ANTHROPIC_API_KEY в .env — или установите Ollama "
-    "и задайте LLM_PROVIDER=ollama для бесплатной локальной модели."
+    "AI-ответы недоступны: не задан ANTHROPIC_API_KEY. "
+    "Добавьте ключ в .env, чтобы получать ответы от Claude."
 )
 
 
@@ -62,11 +62,10 @@ async def ask(
     messages = _build_messages(question, category, history or [])
     try:
         answer = await ai.complete_text(_SYSTEM, messages)
-        return answer, "ai", ai.model_name
-    except Exception as exc:  # noqa: BLE001
+        return answer, "ai", settings.llm_model
+    except Exception:  # noqa: BLE001
         logger.exception("Coach LLM call failed")
-        reason = friendly_llm_error(exc) or "Не удалось получить ответ от модели. Попробуйте позже."
-        return reason, "error", None
+        return "Не удалось получить ответ от модели. Попробуйте позже.", "error", None
 
 
 async def ask_stream(
@@ -81,7 +80,6 @@ async def ask_stream(
     try:
         async for chunk in ai.stream_text(_SYSTEM, messages):
             yield chunk
-    except Exception as exc:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         logger.exception("Coach streaming failed")
-        reason = friendly_llm_error(exc) or "не удалось получить ответ от модели"
-        yield f"\n⚠️ {reason}"
+        yield "\n[Ошибка: не удалось получить ответ от модели.]"

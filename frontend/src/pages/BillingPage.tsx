@@ -208,10 +208,18 @@ export default function BillingPage() {
           апгрейд без реального списания.
         </p>
       )}
-      {usage?.stripe_enabled && (
+      {/* The test card only works on sandbox keys — never advertise it in live
+          mode, where Stripe would decline it and real cards are expected. */}
+      {usage?.test_mode && (
         <p className="muted small">
-          Оплата через Stripe. В тестовом режиме используйте карту 4242 4242 4242
-          4242, любую будущую дату и любой CVC.
+          Тестовый режим Stripe: карта 4242 4242 4242 4242, любая будущая дата и
+          любой CVC. Реальные карты здесь не принимаются.
+        </p>
+      )}
+      {usage?.stripe_enabled && !usage.test_mode && (
+        <p className="muted small">
+          Оплата и хранение карты — на стороне Stripe. Данные карты не проходят
+          через этот сервис.
         </p>
       )}
     </div>

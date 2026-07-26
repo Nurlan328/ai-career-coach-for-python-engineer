@@ -115,6 +115,7 @@ async def usage(db: AsyncSession, user: User) -> dict:
         "cancel_at_period_end": user.subscription_cancel_at_period_end,
         "manageable": bool(user.stripe_customer_id) and stripe_enabled(),
         "stripe_enabled": stripe_enabled(),
+        "test_mode": test_mode(),
     }
 
 
@@ -143,6 +144,17 @@ async def check_interview_quota(db: AsyncSession, user: User) -> None:
 # --------------------------------------------------------------------------- #
 def stripe_enabled() -> bool:
     return bool(settings.stripe_secret_key and stripe is not None)
+
+
+def test_mode() -> bool:
+    """True on sandbox keys, where only Stripe's fake cards are accepted.
+
+    Test and live are separate environments: an sk_test_ key rejects real cards,
+    and an sk_live_ key rejects 4242… — so the UI must only advertise the test
+    card when we are actually in the sandbox.
+    """
+    key = settings.stripe_secret_key or ""
+    return stripe_enabled() and not key.startswith(("sk_live_", "rk_live_"))
 
 
 @lru_cache(maxsize=1)

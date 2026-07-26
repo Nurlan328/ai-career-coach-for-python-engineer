@@ -32,17 +32,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24  # 24h
 
     # --- LLM (Claude) ---
-    # Provider: "auto" = Claude if ANTHROPIC_API_KEY is set, otherwise offline
-    # fallback. Set "ollama" to use a free local model via Ollama instead.
-    llm_provider: str = "auto"  # auto | anthropic | ollama
     anthropic_api_key: str | None = None
     # Override with claude-opus-4-8 for max quality, or claude-haiku-4-5 for speed/cost.
     llm_model: str = "claude-sonnet-4-6"
     llm_max_tokens: int = 2000
-
-    # --- LLM (Ollama, local) — used when LLM_PROVIDER=ollama ---
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "qwen3:8b"
 
     # --- Background jobs (Celery) + cache (Redis) ---
     redis_url: str = "redis://localhost:6379/0"

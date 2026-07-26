@@ -21,6 +21,7 @@ class UsageOut(BaseModel):
     cancel_at_period_end: bool = False
     manageable: bool = False  # portal available (has a Stripe customer)
     stripe_enabled: bool = False
+    test_mode: bool = False  # sandbox keys: only Stripe's fake cards work
 
 
 class CheckoutRequest(BaseModel):

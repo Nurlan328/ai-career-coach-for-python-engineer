@@ -101,6 +101,7 @@ export interface UsageOut {
   cancel_at_period_end: boolean;
   manageable: boolean; // Stripe portal available
   stripe_enabled: boolean;
+  test_mode: boolean; // sandbox keys: only Stripe's fake cards work
 }
 
 export interface CheckoutResponse {

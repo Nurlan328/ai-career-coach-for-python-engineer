@@ -236,3 +236,15 @@ async def test_webhook_rejects_malformed_body(client, monkeypatch):
         headers={"stripe-signature": f"t={ts},v1={mac}"},
     )
     assert r.status_code == 400
+
+
+async def test_test_mode_flag_tracks_the_key_prefix(client, headers, monkeypatch):
+    from app.core.config import settings
+
+    _enable_stripe(monkeypatch)  # sk_test_... key
+    body = (await client.get("/api/billing/me", headers=headers)).json()
+    assert body["test_mode"] is True
+
+    monkeypatch.setattr(settings, "stripe_secret_key", "sk_live_something")
+    body = (await client.get("/api/billing/me", headers=headers)).json()
+    assert body["stripe_enabled"] is True and body["test_mode"] is False
