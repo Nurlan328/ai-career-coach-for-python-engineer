@@ -21,6 +21,11 @@ export function checkout(plan: string): Promise<CheckoutResponse> {
   });
 }
 
+/** Ask the backend to re-read subscription state from Stripe. */
+export function syncBilling(): Promise<UsageOut> {
+  return api<UsageOut>("/api/billing/sync", { method: "POST" });
+}
+
 /** One-time link into the Stripe customer portal (cancel / change card). */
 export function portal(): Promise<PortalResponse> {
   return api<PortalResponse>("/api/billing/portal", { method: "POST" });

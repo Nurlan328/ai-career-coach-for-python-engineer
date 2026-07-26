@@ -103,6 +103,7 @@ Base prefix: `/api`
 | GET    | `/billing/plans`                  | Subscription plans + limits          |
 | GET    | `/billing/me`                     | Current plan + monthly usage         |
 | POST   | `/billing/checkout`               | Stripe Checkout session (or mock upgrade) |
+| POST   | `/billing/sync`                   | Re-read subscription state from Stripe (post-checkout return) |
 | POST   | `/billing/portal`                 | Stripe customer portal link (cancel / change card) |
 | POST   | `/billing/webhook`                | Stripe webhook (subscription lifecycle) |
 
@@ -140,6 +141,9 @@ How it holds together:
   never makes a network call — Stripe stays the source of truth;
 * every event id is claimed in `stripe_events` **before** it is applied, so
   Stripe's at-least-once redelivery can't double-apply anything;
+* the post-checkout return also calls `/billing/sync`, which reads the state
+  straight from Stripe — webhooks can be late, and in local dev (no public URL)
+  they never arrive at all, so the plan must not depend on them alone;
 * entitlement is `effective_plan()`, not the stored plan: a `past_due`
   subscription silently drops back to Free limits until the payment recovers;
 * cancel / change-card go through the Stripe-hosted portal, so card data never

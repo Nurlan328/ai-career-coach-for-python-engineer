@@ -51,6 +51,21 @@ async def checkout(
     return CheckoutResponse(**result)
 
 
+@router.post("/sync", response_model=UsageOut)
+async def sync(current_user: CurrentUser, db: DbSession) -> dict:
+    """Re-read subscription state from Stripe (used on the post-checkout return)."""
+    try:
+        await billing.sync_from_stripe(db, current_user)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except billing.BillingProviderError as exc:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            detail="Stripe недоступен, попробуйте позже.",
+        ) from exc
+    return await billing.usage(db, current_user)
+
+
 @router.post("/portal", response_model=PortalResponse)
 async def portal(current_user: CurrentUser, db: DbSession) -> PortalResponse:
     """One-time link into the Stripe customer portal (cancel / change card)."""

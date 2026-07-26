@@ -260,6 +260,45 @@ async def create_checkout(db: AsyncSession, user: User, plan_name: str) -> dict:
     return {"mock": False, "plan": plan_name, "checkout_url": session["url"]}
 
 
+async def sync_from_stripe(db: AsyncSession, user: User) -> None:
+    """Pull subscription state straight from Stripe instead of waiting for a hook.
+
+    Webhooks stay the primary path, but they are asynchronous and can be delayed
+    or — in local development behind NAT — never arrive at all. Stripe's own
+    guidance is to also confirm on the success redirect, so the user is never
+    left staring at a stale plan after a successful payment. Idempotent: it just
+    mirrors whatever Stripe currently says.
+    """
+    if not stripe_enabled():
+        raise ValueError("Stripe не настроен.")
+    if not user.stripe_customer_id:
+        return  # never checked out — nothing upstream to mirror
+
+    async with _stripe_errors("list subscriptions"):
+        result = await _client().v1.subscriptions.list_async(
+            params={"customer": user.stripe_customer_id, "status": "all", "limit": 10}
+        )
+
+    subs = list(_field(result, "data") or [])
+    # Prefer a paying subscription; otherwise the most recent one decides.
+    current = next(
+        (s for s in subs if _field(s, "status") in ACTIVE_STATUSES),
+        max(subs, key=lambda s: _field(s, "created", 0)) if subs else None,
+    )
+    if current is None:
+        _downgrade(user)
+    else:
+        _apply_subscription(user, current)
+    db.add(user)
+    await db.commit()
+    logger.info(
+        "Stripe: synced user %s -> %s (%s)",
+        user.id,
+        user.subscription_plan,
+        user.subscription_status,
+    )
+
+
 async def create_portal_session(db: AsyncSession, user: User) -> dict:
     """Stripe-hosted portal: cancel, resume, change card, download invoices.
 

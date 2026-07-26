@@ -248,3 +248,48 @@ async def test_test_mode_flag_tracks_the_key_prefix(client, headers, monkeypatch
     monkeypatch.setattr(settings, "stripe_secret_key", "sk_live_something")
     body = (await client.get("/api/billing/me", headers=headers)).json()
     assert body["stripe_enabled"] is True and body["test_mode"] is False
+
+
+async def test_sync_without_stripe_is_rejected(client, headers):
+    r = await client.post("/api/billing/sync", headers=headers)
+    assert r.status_code == 400
+
+
+async def test_sync_without_customer_is_a_noop(client, headers, monkeypatch):
+    _enable_stripe(monkeypatch)
+    r = await client.post("/api/billing/sync", headers=headers)
+    assert r.status_code == 200 and r.json()["plan"] == "free"
+
+
+async def test_sync_mirrors_stripe_state(client, headers, monkeypatch):
+    """Stripe is stubbed at our own boundary (_client), not at the SDK parser."""
+    from app.services import billing
+
+    _enable_stripe(monkeypatch)
+    await _attach_customer()
+
+    sub = _subscription_event("evt_ignored", "active")["data"]["object"]
+
+    class _Subs:
+        async def list_async(self, params):
+            assert params["customer"] == "cus_test"
+            return {"data": [sub]}
+
+    class _V1:
+        subscriptions = _Subs()
+
+    class _Client:
+        v1 = _V1()
+
+    monkeypatch.setattr(billing, "_client", lambda: _Client())
+
+    body = (await client.post("/api/billing/sync", headers=headers)).json()
+    assert body["plan"] == "pro" and body["status"] == "active"
+
+    # Subscription gone upstream -> local state must follow it down.
+    async def _empty(params):
+        return {"data": []}
+
+    monkeypatch.setattr(_Subs, "list_async", lambda self, params: _empty(params))
+    body = (await client.post("/api/billing/sync", headers=headers)).json()
+    assert body["plan"] == "free" and body["status"] == "canceled"

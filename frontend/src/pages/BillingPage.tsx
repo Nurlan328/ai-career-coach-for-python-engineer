@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { checkout, getPlans, getUsage, portal } from "../api/billing";
+import { checkout, getPlans, getUsage, portal, syncBilling } from "../api/billing";
 import { ApiError } from "../api/client";
 import type { PlanOut, UsageOut } from "../types";
 
@@ -47,11 +47,18 @@ export default function BillingPage() {
     }
 
     // Stripe redirects back the moment the card is charged, but the plan only
-    // flips once the webhook lands — usually within a second, sometimes not.
-    // Poll briefly instead of showing a stale "Free".
+    // flips once the webhook lands — usually within a second, sometimes not
+    // (and never, in local dev where Stripe can't reach us). So ask the backend
+    // to read the state straight from Stripe first, then fall back to polling.
     let cancelled = false;
     setInfo("Оплата прошла, активируем подписку…");
     (async () => {
+      const synced = await syncBilling().catch(() => null);
+      if (synced) setUsage(synced);
+      if (synced && synced.plan !== "free") {
+        setInfo("Оплата прошла успешно. Спасибо!");
+        return;
+      }
       for (let attempt = 0; attempt < 8 && !cancelled; attempt++) {
         const u = await refresh().catch(() => null);
         if (u && u.plan !== "free") {
