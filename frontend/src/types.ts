@@ -92,15 +92,25 @@ export interface PlanOut {
 }
 
 export interface UsageOut {
-  plan: string;
+  plan: string; // plan in force right now
+  purchased_plan: string; // what was bought (differs while past_due)
   interviews_used: number;
   interviews_limit: number | null;
+  status: string | null; // Stripe subscription status
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  manageable: boolean; // Stripe portal available
+  stripe_enabled: boolean;
 }
 
 export interface CheckoutResponse {
   mock: boolean;
   plan?: string | null;
   checkout_url?: string | null;
+}
+
+export interface PortalResponse {
+  portal_url: string;
 }
 
 export interface RagSource {

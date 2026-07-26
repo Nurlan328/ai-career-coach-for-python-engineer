@@ -34,4 +34,5 @@ celery>=5.3
 redis>=5.0
 
 # --- Billing ---
-stripe>=9                      # optional: mock mode without a key
+stripe>=15.2                   # optional: mock mode without a key; >=15 for the v1 async namespace
+httpx>=0.27                    # async transport used by the Stripe SDK

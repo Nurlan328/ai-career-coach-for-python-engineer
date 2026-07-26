@@ -41,7 +41,8 @@ runs a text **mock interview** and scores the answers — powered by **Claude**.
     sources (Qdrant + fastembed; works offline, returns snippets without a key)
 11. **Voice interview** — read questions aloud (TTS) and dictate answers (STT) via
     the browser Web Speech API (no backend/keys; Chrome/Edge)
-12. **Billing & plans** — Stripe checkout + monthly interview limits per plan;
+12. **Billing & plans** — real Stripe Checkout + customer portal, subscription
+    state driven by idempotent webhooks, monthly interview limits per plan;
     runs in mock mode (instant upgrade) without a Stripe key
 
 _The full ТЗ scope is implemented._
@@ -101,8 +102,48 @@ Base prefix: `/api`
 | POST   | `/coach/rag`                      | Answer grounded in the knowledge base, with cited sources |
 | GET    | `/billing/plans`                  | Subscription plans + limits          |
 | GET    | `/billing/me`                     | Current plan + monthly usage         |
-| POST   | `/billing/checkout`               | Stripe checkout (or mock upgrade)    |
-| POST   | `/billing/webhook`                | Stripe webhook (activate subscription) |
+| POST   | `/billing/checkout`               | Stripe Checkout session (or mock upgrade) |
+| POST   | `/billing/portal`                 | Stripe customer portal link (cancel / change card) |
+| POST   | `/billing/webhook`                | Stripe webhook (subscription lifecycle) |
+
+## Billing (Stripe)
+
+Without `STRIPE_SECRET_KEY` billing runs in **mock mode**: "checkout" upgrades the
+user instantly and nothing is charged, so the flow is demoable offline. Set the
+three variables below and the same buttons drive real Stripe Checkout.
+
+```bash
+# .env — test keys are enough, no real money moves
+STRIPE_SECRET_KEY=sk_test_...      # dashboard.stripe.com/test/apikeys
+STRIPE_PRICE_PRO=price_...         # a recurring (monthly) price from the catalog
+STRIPE_WEBHOOK_SECRET=whsec_...    # printed by `stripe listen`, see below
+```
+
+Locally, forward events with the Stripe CLI (the webhook is public, so it is
+authenticated *only* by the signature — without a secret we refuse the payload):
+
+```bash
+stripe listen --forward-to localhost:8000/api/billing/webhook
+```
+
+In production, create the endpoint in the dashboard and subscribe to
+`checkout.session.completed`, `customer.subscription.updated`,
+`customer.subscription.deleted`, `invoice.payment_failed`.
+
+Test card: `4242 4242 4242 4242`, any future expiry, any CVC.
+
+How it holds together:
+
+* one Stripe **Customer** per user (`users.stripe_customer_id`), created lazily and
+  reused — that is what makes the portal, invoices and webhook lookups line up;
+* subscription state is mirrored onto `users` by webhooks, so the quota check
+  never makes a network call — Stripe stays the source of truth;
+* every event id is claimed in `stripe_events` **before** it is applied, so
+  Stripe's at-least-once redelivery can't double-apply anything;
+* entitlement is `effective_plan()`, not the stored plan: a `past_due`
+  subscription silently drops back to Free limits until the payment recovers;
+* cancel / change-card go through the Stripe-hosted portal, so card data never
+  touches this app.
 
 ## Frontend (React)
 
@@ -159,7 +200,7 @@ app/
 
 ```bash
 pip install -r requirements-dev.txt
-pytest -q          # 17 tests, fully offline (no API key, no Redis needed)
+pytest -q          # 28 tests, fully offline (no API key, no Redis, no Stripe)
 ruff check app tests
 ```
 

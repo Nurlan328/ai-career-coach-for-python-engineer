@@ -307,6 +307,15 @@ textarea {
   color: var(--primary);
   border-color: var(--primary);
 }
+/* Multi-word labels: `capitalize` would title-case every word of a sentence. */
+.badge.status {
+  text-transform: none;
+  margin-left: 0.4rem;
+}
+.badge.status.warn {
+  color: var(--warn);
+  border-color: var(--warn);
+}
 
 .chips {
   display: flex;

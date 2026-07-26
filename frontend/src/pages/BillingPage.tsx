@@ -1,9 +1,24 @@
 import { useEffect, useState } from "react";
-import { checkout, getPlans, getUsage } from "../api/billing";
+import { checkout, getPlans, getUsage, portal } from "../api/billing";
 import { ApiError } from "../api/client";
 import type { PlanOut, UsageOut } from "../types";
 
 const limitLabel = (n: number | null) => (n === null ? "∞" : String(n));
+
+// Statuses where the subscription is actually paid up (mirrors the backend).
+const HEALTHY = new Set(["active", "trialing"]);
+
+const STATUS_LABEL: Record<string, string> = {
+  active: "активна",
+  trialing: "пробный период",
+  past_due: "платёж не прошёл",
+  canceled: "отменена",
+  incomplete: "не завершена",
+  unpaid: "не оплачена",
+};
+
+const fmtDate = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleDateString("ru-RU") : null;
 
 export default function BillingPage() {
   const [plans, setPlans] = useState<PlanOut[]>([]);
@@ -12,17 +27,47 @@ export default function BillingPage() {
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  async function refresh() {
+  async function refresh(): Promise<UsageOut> {
     const [p, u] = await Promise.all([getPlans(), getUsage()]);
     setPlans(p);
     setUsage(u);
+    return u;
   }
 
   useEffect(() => {
-    refresh().catch(() => undefined);
     const status = new URLSearchParams(window.location.search).get("status");
-    if (status === "success") setInfo("Оплата прошла успешно. Спасибо!");
+    // Drop the query param so a reload doesn't replay the banner.
+    if (status) window.history.replaceState({}, "", window.location.pathname);
+
     if (status === "cancel") setError("Оплата отменена.");
+
+    if (status !== "success") {
+      refresh().catch(() => undefined);
+      return;
+    }
+
+    // Stripe redirects back the moment the card is charged, but the plan only
+    // flips once the webhook lands — usually within a second, sometimes not.
+    // Poll briefly instead of showing a stale "Free".
+    let cancelled = false;
+    setInfo("Оплата прошла, активируем подписку…");
+    (async () => {
+      for (let attempt = 0; attempt < 8 && !cancelled; attempt++) {
+        const u = await refresh().catch(() => null);
+        if (u && u.plan !== "free") {
+          setInfo("Оплата прошла успешно. Спасибо!");
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+      if (!cancelled)
+        setInfo(
+          "Оплата прошла. Подписка активируется в течение минуты — обновите страницу.",
+        );
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function onUpgrade(plan: string) {
@@ -44,15 +89,52 @@ export default function BillingPage() {
     }
   }
 
+  async function onManage() {
+    setError(null);
+    setBusy("portal");
+    try {
+      const res = await portal();
+      window.location.href = res.portal_url;
+    } catch (err) {
+      setError(
+        err instanceof ApiError ? err.message : "Не удалось открыть портал",
+      );
+      setBusy(null);
+    }
+  }
+
+  const periodEnd = fmtDate(usage?.current_period_end ?? null);
+
   return (
     <div className="page">
       <h1>Тариф и оплата</h1>
 
       {usage && (
         <div className="card">
-          <h3>
-            Текущий тариф: <span className="badge level">{usage.plan}</span>
-          </h3>
+          <div className="row between">
+            <h3>
+              Текущий тариф: <span className="badge level">{usage.plan}</span>
+              {usage.status && (
+                <span
+                  className={
+                    "badge status" + (HEALTHY.has(usage.status) ? "" : " warn")
+                  }
+                >
+                  {STATUS_LABEL[usage.status] ?? usage.status}
+                </span>
+              )}
+            </h3>
+            {usage.manageable && (
+              <button
+                className="btn ghost"
+                disabled={busy === "portal"}
+                onClick={onManage}
+              >
+                {busy === "portal" ? "…" : "Управление подпиской"}
+              </button>
+            )}
+          </div>
+
           <p className="muted">
             Интервью в этом месяце: {usage.interviews_used} /{" "}
             {limitLabel(usage.interviews_limit)}
@@ -67,9 +149,25 @@ export default function BillingPage() {
               />
             </div>
           )}
+
+          {/* Only meaningful while the subscription is healthy: on past_due the
+              date is a retry deadline, not a charge date. */}
+          {periodEnd && HEALTHY.has(usage.status ?? "") && (
+            <p className="muted small">
+              {usage.cancel_at_period_end
+                ? `Подписка отменена — Pro доступен до ${periodEnd}.`
+                : `Следующее списание: ${periodEnd}`}
+            </p>
+          )}
         </div>
       )}
 
+      {usage?.status === "past_due" && (
+        <div className="alert warn">
+          Платёж по подписке не прошёл: действуют лимиты тарифа Free. Обновите
+          карту в разделе «Управление подпиской».
+        </div>
+      )}
       {info && <div className="alert ok-alert">{info}</div>}
       {error && <div className="alert error">{error}</div>}
 
@@ -104,10 +202,18 @@ export default function BillingPage() {
         ))}
       </div>
 
-      <p className="muted small">
-        Без ключа Stripe оплата работает в демо-режиме: мгновенный апгрейд без
-        реального списания.
-      </p>
+      {usage && !usage.stripe_enabled && (
+        <p className="muted small">
+          Ключ Stripe не задан: оплата работает в демо-режиме — мгновенный
+          апгрейд без реального списания.
+        </p>
+      )}
+      {usage?.stripe_enabled && (
+        <p className="muted small">
+          Оплата через Stripe. В тестовом режиме используйте карту 4242 4242 4242
+          4242, любую будущую дату и любой CVC.
+        </p>
+      )}
     </div>
   );
 }
